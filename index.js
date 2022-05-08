@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
@@ -22,6 +23,16 @@ async function run() {
     await client.connect();
     const productCollection = client.db('WarehouseManagement').collection('product');
 
+  //AUTH
+   app.post('/login', async(req, res) => {
+    const user =req.body;
+    const accessToken = jwt.sign(user,process.env.ACCESS_TOKEN,{
+      expiresIn: '1d'
+    });
+    res.send(accessToken);
+   })   
+
+    // products API 
     app.get('/product', async (req, res) => {
       const page = parseInt(req.query.page);
       const size = parseInt(req.query.size);
@@ -29,7 +40,7 @@ async function run() {
       const cursor = productCollection.find(query);
       let products;
       if (page || size) {
-        products = await cursor.skip(page*size).toArray();
+        products = await cursor.skip(size*page).toArray();
       }
       else {
         products = await cursor.toArray();
@@ -45,6 +56,14 @@ async function run() {
       res.send(product);
     });
 
+    app.get('/product', async(req, res) => {
+      const email = req.query.email;
+      const query={email: email};
+      const cursor = productCollection.find(query);
+      const products = await cursor.toArray();
+      res.send(products);
+    })
+
     // POST
     app.post('/product', async (req, res) => {
       const newItem = req.body;
@@ -52,6 +71,7 @@ async function run() {
       res.send(result);
     });
 
+    // product count API
     app.get('/productCount', async (req, res) => {
       const query = {};
       const cursor = productCollection.find(query);
